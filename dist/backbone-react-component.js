@@ -232,6 +232,7 @@
         props.collection = newProps;
       } else {
         props = newProps;
+	props.cid = modelOrCollection.cid;
       }
 
       if (target) {
