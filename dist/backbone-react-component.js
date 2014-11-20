@@ -232,7 +232,8 @@
         props.collection = newProps;
       } else {
         props = newProps;
-	props.cid = modelOrCollection.cid;
+        props.cid = modelOrCollection.cid;
+        props.modelType = modelOrCollection.modelType;
       }
 
       if (target) {

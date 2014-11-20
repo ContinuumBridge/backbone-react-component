@@ -651,6 +651,7 @@ It listens to <code>Backbone.Model#sync</code> and <code>Backbone.Collection#syn
         props.collection = newProps;
       } <span class="hljs-keyword">else</span> {
         props = newProps;
+	props.cid = modelOrCollection.cid;
       }
 
       <span class="hljs-keyword">if</span> (target) {
