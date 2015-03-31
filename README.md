@@ -2,7 +2,7 @@
 
 `Backbone.React.Component` is a mixin that glues [Backbone](http://backbonejs.org/) models and collections into [React](http://facebook.github.io/react/) components.
 
-When the component is mounted, a wrapper starts listening to models and collections changes to automatically set your component props and achieve UI binding through reactive updates.
+When the component is mounted, a wrapper starts listening to models and collections changes to automatically set your component state and achieve UI binding through reactive updates.
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
@@ -19,7 +19,8 @@ When the component is mounted, a wrapper starts listening to models and collecti
     - [$](#$)
     - [getCollection()](#getcollection)
     - [getModel()](#getmodel)
-    - [getOwner()](#getowner)
+    - [overrideModel()](#overridemodel)
+    - [overrideCollection()](#overridecollection)
 - [Examples](#examples)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -48,7 +49,7 @@ If you're not using [Bower](http://bower.io/) nor [Npm](https://npmjs.org/) down
 var MyComponent = React.createClass({
   mixins: [Backbone.React.Component.mixin],
   render: function () {
-    return <div>{this.props.foo}</div>;
+    return <div>{this.state.model.foo}</div>;
   }
 });
 
@@ -65,13 +66,16 @@ model.set('foo', 'Hello world!');
 var MyComponent = React.createClass({
   mixins: [Backbone.React.Component.mixin],
   createEntry: function (entry) {
-    return <div>{entry.helloWorld}</div>;
+    return <div key={entry.id}>{entry.helloWorld}</div>;
   },
   render: function () {
-    return <div>{this.props.collection.map(this.createEntry)}</div>;
+    return <div>{this.state.collection.map(this.createEntry)}</div>;
   }
 });
-var collection = new Backbone.Collection([{helloWorld: 'Hello world!'}]);
+var collection = new Backbone.Collection([
+  {id: 0, helloWorld: 'Hello world!'},
+  {id: 1, helloWorld: 'Hello world!'}
+]);
 
 React.render(<MyComponent collection={collection} />, document.body);
 ```
@@ -86,16 +90,18 @@ var MyComponent = React.createClass({
   render: function () {
     return (
       <div>
-        {this.props.firstModel.helloWorld}
-        {this.props.secondModel.helloWorld}
-        {this.props.firstCollection.map(this.createEntry)}
-        {this.props.secondCollection.map(this.createEntry)}
+        {this.state.firstModel.helloWorld}
+        {this.state.secondModel.helloWorld}
+        {this.state.firstCollection.map(this.createEntry)}
+        {this.state.secondCollection.map(this.createEntry)}
       </div>
     );
   }
 });
 
-var newComponent = MyComponent({
+var MyFactory = React.createFactory(MyComponent);
+
+var newComponent = MyFactory({
   model: {
     firstModel: new Backbone.Model({helloWorld: 'Hello world!'}),
     secondModel: new Backbone.Model({helloWorld: 'Hello world!'})
@@ -120,34 +126,45 @@ var model = new Backbone.Model({
 var HelloWorld = React.createClass({
   mixins: [backboneMixin],
   render: function () {
-    return React.DOM.div({}, this.props.helloWorld);
+    return React.DOM.div({}, this.state.model.helloWorld);
   }
 });
+var HelloWorldFactory = React.createFactory(HelloWorld);
 
 // Render to an HTML string
-React.renderToString(HelloWorld({model: model}));
+React.renderToString(HelloWorldFactory({model: model}));
 // Updating the model
 model.set('helloWorld', 'Hi again!');
 // Rendering to an HTML string again
-React.renderToString(HelloWorld({model: model}));
+React.renderToString(HelloWorldFactory({model: model}));
 ```
 
 ### API
 The following API is under `Backbone.React.Component.mixin` (`require('backbone-react-component')`):
 
 #### $
-Inspired by Backbone.View, it's a shortcut to this.$el.find method.
+Inspired by Backbone.View, it's a shortcut to this.$el.find method if `jQuery`
+is present, else it fallbacks to native DOM `querySelector`.
 
 #### getCollection()
-Crawls to the owner of the component searching for a collection.
+Grabs the component's collection(s) or from one of the parents.
 
 #### getModel()
-Crawls to the owner of the component searching for a model.
+Grabs the component's model(s) or from one of the parents.
 
-#### getOwner()
-Gets the component owner (greatest parent component).
+#### overrideModel()
+Hook that can be implemented to return a model or multiple models. This hook is
+executed when the component is initialized. It's useful on cases such as when
+`react-router` is being used.
+
+#### overrideCollection()
+Hook that can be implemented to return a collection or multiple collections.
+This hook is executed when the component is initialized. It's useful on cases
+such as when `react-router` is being used.
+
 
 ## Examples
 * [Blog](https://github.com/magalhas/backbone-react-component/tree/master/examples/blog)
 * [Nested](https://github.com/magalhas/backbone-react-component/tree/master/examples/nested)
 * [Typewriter](https://rawgithub.com/magalhas/backbone-react-component/master/examples/typewriter/index.html)
+* [Screencast](https://www.youtube.com/watch?v=iul1fWHVU6A)

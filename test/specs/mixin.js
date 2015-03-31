@@ -1,14 +1,19 @@
+/* global _:true, document:true */
 describe('Parent Component', function () {
   'use strict';
-  var Component = React.createClass({
+  var component, el, mountedComponent, model1, model2, collection1, collection2, spy, initialStateSpy;
+
+  var Component = React.createFactory(React.createClass({
     mixins: [Backbone.React.Component.mixin],
+    getInitialState: function () {
+      if (initialStateSpy) initialStateSpy.call(this);
+      return {};
+    },
     render: function () {
       if (spy) spy.call(this);
-      return React.DOM.div({}, this.props.hello);
+      return React.DOM.div({}, this.state.hello);
     }
-  });
-
-  var component, el, mountedComponent, model1, model2, collection1, collection2, spy;
+  }));
 
   beforeEach(function () {
     el = document.createElement('div');
@@ -16,6 +21,7 @@ describe('Parent Component', function () {
     model2 = new Backbone.Model({goodbye: 'other world!'});
     collection1 = new Backbone.Collection([model1, model2]);
     collection2 = new Backbone.Collection([model2, model1]);
+    mountedComponent = component = spy = initialStateSpy = null;
   });
 
   afterEach(function () {
@@ -36,20 +42,14 @@ describe('Parent Component', function () {
     expect(mountedComponent.getCollection()).toEqual(collection1);
   });
 
-  it('gets the owner', function () {
-    component = Component();
-    mountedComponent = React.render(component, el);
-    expect(mountedComponent.getOwner()).toEqual(mountedComponent);
-  });
-
   it('binds to a model', function (done) {
     component = Component({model: model1});
     mountedComponent = React.render(component, el);
-    expect(mountedComponent.props.hello).toEqual('world!');
+    expect(mountedComponent.state.model.hello).toEqual('world!');
     model1.set('hello', 'again');
-    // Defering because setting props is defered as well
+    // Defering because setting state is defered as well
     _.defer(function () {
-      expect(mountedComponent.props.hello).toEqual('again');
+      expect(mountedComponent.state.model.hello).toEqual('again');
       done();
     });
   });
@@ -62,18 +62,18 @@ describe('Parent Component', function () {
       }
     });
     mountedComponent = React.render(component, el);
-    expect(mountedComponent.props.firstModel.hello).toEqual('world!');
-    expect(mountedComponent.props.secondModel.goodbye).toEqual('other world!');
+    expect(mountedComponent.state.firstModel.hello).toEqual('world!');
+    expect(mountedComponent.state.secondModel.goodbye).toEqual('other world!');
   });
 
   it('binds to a collection', function (done) {
     component = Component({collection: collection1});
     mountedComponent = React.render(component, el);
-    expect(mountedComponent.props.collection[0].hello).toEqual('world!');
+    expect(mountedComponent.state.collection[0].hello).toEqual('world!');
     mountedComponent.getCollection().at(0).set('hello', 'again');
-    // Defering because setting props is defered as well
+    // Defering because setting state is defered as well
     _.defer(function () {
-      expect(mountedComponent.props.collection[0].hello).toEqual('again');
+      expect(mountedComponent.state.collection[0].hello).toEqual('again');
       done();
     });
   });
@@ -86,14 +86,14 @@ describe('Parent Component', function () {
       }
     });
     mountedComponent = React.render(component, el);
-    expect(mountedComponent.props.firstCollection[0].hello).toEqual('world!');
-    expect(mountedComponent.props.secondCollection[0].goodbye).toEqual('other world!');
+    expect(mountedComponent.state.firstCollection[0].hello).toEqual('world!');
+    expect(mountedComponent.state.secondCollection[0].goodbye).toEqual('other world!');
     mountedComponent.getCollection().firstCollection.at(0).set('hello', 'again');
     mountedComponent.getCollection().secondCollection.at(0).set('goodbye', 'other again');
-    // Defering because setting props is defered as well
+    // Defering because setting state is defered as well
     _.defer(function () {
-      expect(mountedComponent.props.firstCollection[0].hello).toEqual('again');
-      expect(mountedComponent.props.secondCollection[0].goodbye).toEqual('other again');
+      expect(mountedComponent.state.firstCollection[0].hello).toEqual('again');
+      expect(mountedComponent.state.secondCollection[0].goodbye).toEqual('other again');
       done();
     });
   });
@@ -103,25 +103,121 @@ describe('Parent Component', function () {
         collection: collection1
     });
     mountedComponent = React.render(component, el);
-    expect(mountedComponent.props.collection[0].hello).toEqual('world!');
+    expect(mountedComponent.state.collection[0].hello).toEqual('world!');
     collection1.reset({hello: 'other world!'});
     _.defer(function () {
-      expect(mountedComponent.props.collection[0].hello).toEqual('other world!');
+      expect(mountedComponent.state.collection[0].hello).toEqual('other world!');
       done();
     });
+  });
+
+  it('grabs the collection instance on `getInitialState`', function (done) {
+    component = Component({
+      collection: collection1
+    });
+
+    initialStateSpy = jasmine.createSpy().and.callFake(function () {
+      expect(this.getCollection()).toEqual(collection1);
+      done();
+    });
+
+    React.render(component, el);
+  });
+
+  it('grabs the model instance on `getInitialState`', function (done) {
+    component = Component({
+      model: model1
+    });
+
+    initialStateSpy = jasmine.createSpy().and.callFake(function () {
+      expect(this.getModel()).toEqual(model1);
+      done();
+    });
+
+    React.render(component, el);
+  });
+
+  it('updates the collection when a new one is passed', function (done) {
+    component = Component({
+      collection: collection1
+    });
+
+    mountedComponent = React.render(component, el, function () {
+      expect(this.state.collection[0].hello).toEqual('world!');
+
+      component = Component({
+        collection: collection2
+      });
+
+      mountedComponent = React.render(component, el, function () {
+        expect(this.state.collection[0].goodbye).toEqual('other world!');
+        done();
+      });
+    });
+  });
+
+  it('updates the model when a new one is passed', function (done) {
+    component = Component({
+      model: model1
+    });
+
+    mountedComponent = React.render(component, el, function () {
+      expect(this.state.model.hello).toEqual('world!');
+
+      component = Component({
+        model: model2
+      });
+
+      mountedComponent = React.render(component, el, function () {
+        expect(this.state.model.goodbye).toEqual('other world!');
+        done();
+      });
+    });
+  });
+
+  it('overrides the model(s) if hooked', function () {
+    var NewComponent = React.createFactory(React.createClass({
+      mixins: [Backbone.React.Component.mixin],
+      overrideModel: function () {
+        return model2;
+      },
+      render: function () {
+        return React.DOM.div();
+      }
+    }));
+
+    var component = NewComponent({model: model1});
+    var mountedComponent = React.render(component, el);
+    expect(mountedComponent.getModel()).toEqual(model2);
+  });
+
+  it('overrides the collection(s) if hooked', function () {
+    var NewComponent = React.createFactory(React.createClass({
+      mixins: [Backbone.React.Component.mixin],
+      overrideCollection: function () {
+        return collection2;
+      },
+      render: function () {
+        return React.DOM.div();
+      }
+    }));
+
+    var component = NewComponent({collection: collection1});
+    var mountedComponent = React.render(component, el);
+    expect(mountedComponent.getCollection ()).toEqual(collection2);
   });
 
   describe('Child Component', function () {
 
     describe('with nested models', function () {
       var newSpy;
-      var NewComponent = React.createClass({
+      var NewComponent = React.createFactory(React.createClass({
         mixins: [Backbone.React.Component.mixin],
         render: function () {
           if (newSpy) newSpy.call(this);
           return Component({model: this.getCollection().at(0)});
         }
-      });
+      }));
 
       beforeEach(function () {
         component = NewComponent({collection: collection1});
@@ -151,13 +247,13 @@ describe('Parent Component', function () {
 
     describe('with nested collections', function () {
       var newSpy;
-      var NewComponent = React.createClass({
+      var NewComponent = React.createFactory(React.createClass({
         mixins: [Backbone.React.Component.mixin],
         render: function () {
           if (newSpy) newSpy.call(this);
           return Component({collection: collection2});
         }
-      });
+      }));
 
       beforeEach(function () {
         component = NewComponent({collection: collection1});
@@ -180,29 +276,29 @@ describe('Parent Component', function () {
         expect(spy).toHaveBeenCalled();
       });
 
-      it('has the right JSON data inside the parent props', function () {
+      it('has the right JSON data inside the parent state', function () {
         newSpy = jasmine.createSpy().and.callFake(function () {
-          expect(this.props.collection instanceof Array).toBeTruthy();
-          expect(this.props.collection).toEqual(this.getCollection().toJSON());
+          expect(this.state.collection instanceof Array).toBeTruthy();
+          expect(this.state.collection).toEqual(this.getCollection().toJSON());
         });
         mountedComponent = React.render(component, el);
         expect(newSpy).toHaveBeenCalled();
       });
 
-      it('has the right JSON data inside the child props', function () {
+      it('has the right JSON data inside the child state', function () {
         spy = jasmine.createSpy().and.callFake(function () {
-          expect(this.props.collection instanceof Array).toBeTruthy();
-          expect(this.props.collection).toEqual(this.getCollection().toJSON());
+          expect(this.state.collection instanceof Array).toBeTruthy();
+          expect(this.state.collection).toEqual(this.getCollection().toJSON());
         });
         mountedComponent = React.render(component, el);
         expect(spy).toHaveBeenCalled();
       });
 
-      it('has the right JSON data inside the parent props after collection changes', function (done) {
+      it('has the right JSON data inside the parent state after collection changes', function (done) {
         newSpy = jasmine.createSpy().and.callFake(function () {
           expect(this.getCollection()).toEqual(collection1);
-          expect(this.props.collection instanceof Array).toBeTruthy();
-          expect(this.props.collection).toEqual(this.getCollection().toJSON());
+          expect(this.state.collection instanceof Array).toBeTruthy();
+          expect(this.state.collection).toEqual(this.getCollection().toJSON());
         });
         mountedComponent = React.render(component, el);
         expect(newSpy).toHaveBeenCalled();
@@ -213,11 +309,11 @@ describe('Parent Component', function () {
         });
       });
 
-      it('has the right JSON data inside the child props after collection changes', function (done) {
+      it('has the right JSON data inside the child state after collection changes', function (done) {
         spy = jasmine.createSpy().and.callFake(function () {
           expect(this.getCollection()).toEqual(collection2);
-          expect(this.props.collection instanceof Array).toBeTruthy();
-          expect(this.props.collection).toEqual(this.getCollection().toJSON());
+          expect(this.state.collection instanceof Array).toBeTruthy();
+          expect(this.state.collection).toEqual(this.getCollection().toJSON());
         });
         mountedComponent = React.render(component, el);
         expect(spy).toHaveBeenCalled();
@@ -229,4 +325,5 @@ describe('Parent Component', function () {
       });
     });
   });
+
 });
