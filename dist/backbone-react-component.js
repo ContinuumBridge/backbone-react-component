@@ -330,7 +330,7 @@
       if (collection) {
         if (collection.models)
           this
-            .listenTo(collection, 'update change sort reset',
+            .listenTo(collection, 'update change sort reset relational:change relational:add relational:remove relational:reset',
               _.partial(this.setStateBackbone, collection, key, void 0, true))
             .listenTo(collection, 'error', this.onError)
             .listenTo(collection, 'request', this.onRequest)
@@ -347,7 +347,7 @@
       if (model) {
         if (model.attributes)
           this
-            .listenTo(model, 'change',
+            .listenTo(model, 'change relational:change',
               _.partial(this.setStateBackbone, model, key, void 0, true))
             .listenTo(model, 'error', this.onError)
             .listenTo(model, 'request', this.onRequest)
